@@ -18,16 +18,20 @@ export function CourseCard({ course }: CourseCardProps) {
       <Card className="overflow-hidden border border-border transition-all duration-200 hover:border-primary/30 hover:shadow-lg">
         {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden bg-muted">
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-            <BookOpen className="h-12 w-12 text-primary/30" />
-          </div>
+          {course.thumbnail ? (
+            <img src={course.thumbnail} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+              <BookOpen className="h-12 w-12 text-primary/30" />
+            </div>
+          )}
           <div className="absolute left-3 top-3 flex gap-1.5">
             <Badge className={`text-[10px] font-semibold ${typeColor}`}>{typeLabel}</Badge>
             <Badge className="bg-foreground/80 text-[10px] font-semibold text-background backdrop-blur">{course.level}</Badge>
           </div>
-          {course.originalPrice > course.price && (
+          {((course.originalPrice ?? 0) > (course.price ?? 0)) && (
             <Badge className="absolute right-3 top-3 bg-destructive text-[10px] font-bold text-primary-foreground">
-              {Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)}% OFF
+              {Math.round((((course.originalPrice ?? 0) - (course.price ?? 0)) / (course.originalPrice ?? 1)) * 100)}% OFF
             </Badge>
           )}
         </div>
@@ -48,22 +52,22 @@ export function CourseCard({ course }: CourseCardProps) {
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-              <span className="font-semibold text-foreground">{course.rating}</span>
-              <span>({course.reviewCount})</span>
+              <span className="font-semibold text-foreground">{course.rating ?? 0}</span>
+              <span>({course.reviewCount ?? 0})</span>
             </span>
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" /> {course.duration}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" /> {course.enrollmentCount.toLocaleString()}
+              <Users className="h-3.5 w-3.5" /> {(course.enrollmentCount ?? 0).toLocaleString()}
             </span>
           </div>
 
           {/* Price */}
           <div className="flex items-center gap-2 border-t border-border pt-3">
-            <span className="text-lg font-bold text-foreground">{formatPrice(course.price)}</span>
-            {course.originalPrice > course.price && (
-              <span className="text-sm text-muted-foreground line-through">{formatPrice(course.originalPrice)}</span>
+            <span className="text-lg font-bold text-foreground">{formatPrice(course.price ?? 0)}</span>
+            {(course.originalPrice ?? 0) > (course.price ?? 0) && (
+              <span className="text-sm text-muted-foreground line-through">{formatPrice(course.originalPrice ?? 0)}</span>
             )}
           </div>
         </CardContent>

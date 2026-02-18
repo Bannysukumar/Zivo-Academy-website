@@ -2,17 +2,21 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { BookOpen, Trash2, Tag, ShoppingCart, ArrowRight } from "lucide-react"
-import { mockCourses } from "@/lib/mock-data"
 import { formatPrice } from "@/lib/format"
+import { useCart } from "@/lib/cart-context"
+import { useAuth } from "@/lib/firebase/auth-context"
 
 export function CartView() {
-  const [cartItems, setCartItems] = useState(mockCourses.slice(0, 2))
+  const router = useRouter()
+  const { user } = useAuth()
+  const { items: cartItems, removeItem, clearCart } = useCart()
   const [coupon, setCoupon] = useState("")
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
 
@@ -20,14 +24,18 @@ export function CartView() {
   const discount = appliedCoupon === "WELCOME20" ? Math.round(subtotal * 0.2) : 0
   const total = subtotal - discount
 
-  const removeItem = (id: string) => {
-    setCartItems(prev => prev.filter(c => c.id !== id))
-  }
-
   const applyCoupon = () => {
     if (coupon.toUpperCase() === "WELCOME20") {
       setAppliedCoupon("WELCOME20")
     }
+  }
+
+  const handleCheckout = () => {
+    if (!user) {
+      router.push("/auth/login?redirect=/cart")
+      return
+    }
+    router.push("/checkout")
   }
 
   if (cartItems.length === 0) {
@@ -141,7 +149,7 @@ export function CartView() {
                   <p className="text-xs text-success">Coupon {appliedCoupon} applied successfully!</p>
                 )}
 
-                <Button size="lg" className="w-full gap-2">
+                <Button size="lg" className="w-full gap-2" onClick={handleCheckout}>
                   Proceed to Checkout <ArrowRight className="h-4 w-4" />
                 </Button>
 

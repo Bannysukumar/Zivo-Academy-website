@@ -1,25 +1,51 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Copy, Share2, Wallet, TrendingUp, Users, IndianRupee, CheckCircle2 } from "lucide-react"
-import { mockReferralEarnings, mockReferralWallet, mockReferralWithdrawals } from "@/lib/mock-data"
+import { Copy, Share2, Wallet, TrendingUp, Users, IndianRupee } from "lucide-react"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useReferralData } from "@/lib/firebase/hooks"
 import { formatPrice, formatDate } from "@/lib/format"
 import { toast } from "sonner"
 
 export default function StudentReferralsPage() {
-  const wallet = mockReferralWallet
-  const earnings = mockReferralEarnings.filter(e => e.referrerId === "u1")
-  const referralCode = "ARJUN100"
-  const referralLink = `https://zivoacademy.com/ref/${referralCode}`
+  const { user } = useAuth()
+  const { earnings, wallet, withdrawals, loading } = useReferralData(user?.id)
+  const referralCode = user?.referralCode ?? ""
+  const [referralLink, setReferralLink] = useState("")
+  useEffect(() => {
+    if (referralCode && typeof window !== "undefined") setReferralLink(`${window.location.origin}/ref/${referralCode}`)
+  }, [referralCode])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast.success("Copied to clipboard!")
+  }
+
+  const defaultWallet = {
+    totalEarned: 0,
+    availableBalance: 0,
+    withdrawn: 0,
+    pending: 0,
+    userId: user?.id ?? "",
+  }
+  const w = wallet ?? defaultWallet
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-56 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -29,7 +55,6 @@ export default function StudentReferralsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Earn rewards by referring friends to ZIVO Academy</p>
       </div>
 
-      {/* Referral Link */}
       <Card className="border border-primary/20 bg-primary/5">
         <CardContent className="flex flex-col gap-4 p-5">
           <div className="flex items-center gap-2">
@@ -48,7 +73,6 @@ export default function StudentReferralsPage() {
         </CardContent>
       </Card>
 
-      {/* Wallet Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border border-border">
           <CardContent className="flex items-center gap-3 p-4">
@@ -57,7 +81,7 @@ export default function StudentReferralsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Earned</p>
-              <p className="text-lg font-bold text-foreground">{formatPrice(wallet.totalEarned)}</p>
+              <p className="text-lg font-bold text-foreground">{formatPrice(w.totalEarned)}</p>
             </div>
           </CardContent>
         </Card>
@@ -68,7 +92,7 @@ export default function StudentReferralsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Available</p>
-              <p className="text-lg font-bold text-foreground">{formatPrice(wallet.availableBalance)}</p>
+              <p className="text-lg font-bold text-foreground">{formatPrice(w.availableBalance)}</p>
             </div>
           </CardContent>
         </Card>
@@ -79,7 +103,7 @@ export default function StudentReferralsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Withdrawn</p>
-              <p className="text-lg font-bold text-foreground">{formatPrice(wallet.withdrawn)}</p>
+              <p className="text-lg font-bold text-foreground">{formatPrice(w.withdrawn)}</p>
             </div>
           </CardContent>
         </Card>
@@ -96,14 +120,12 @@ export default function StudentReferralsPage() {
         </Card>
       </div>
 
-      {/* Withdraw button */}
       <div className="flex justify-end">
-        <Button disabled={wallet.availableBalance < 500} className="gap-2">
+        <Button disabled={w.availableBalance < 500} className="gap-2">
           <Wallet className="h-4 w-4" /> Request Withdrawal
         </Button>
       </div>
 
-      {/* Earnings History */}
       <Card className="border border-border">
         <CardHeader>
           <CardTitle className="text-base">Referral Earnings</CardTitle>
@@ -123,7 +145,7 @@ export default function StudentReferralsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {earnings.map(e => (
+                {earnings.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.referredUserName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{e.courseTitle}</TableCell>

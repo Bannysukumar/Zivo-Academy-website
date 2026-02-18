@@ -7,19 +7,40 @@ import {
   BookOpen, Users, CreditCard, IndianRupee, TrendingUp,
   ArrowRight, ShieldCheck, BarChart3
 } from "lucide-react"
-import { mockCourses, mockUsers, mockPayments, mockEnrollments } from "@/lib/mock-data"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useAllUsers, useAllPayments, useAllEnrollments, useCourses } from "@/lib/firebase/hooks"
 import { formatPrice } from "@/lib/format"
 
 export default function AdminDashboard() {
-  const totalRevenue = mockPayments.filter(p => p.status === "captured").reduce((s, p) => s + p.amount, 0)
-  const totalStudents = mockUsers.filter(u => u.role === "student").length
-  const totalCourses = mockCourses.length
-  const totalEnrollments = mockEnrollments.length
+  const { user } = useAuth()
+  const { data: users = [] } = useAllUsers()
+  const { data: payments = [] } = useAllPayments()
+  const { data: enrollments = [] } = useAllEnrollments()
+  const { data: courses = [], loading } = useCourses()
+
+  const totalRevenue = payments.filter((p) => p.status === "captured").reduce((s, p) => s + p.amount, 0)
+  const totalStudents = users.filter((u) => u.role === "student").length
+  const totalCourses = courses.length
+  const totalEnrollments = enrollments.length
+  const displayName = user?.name ?? "Admin"
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-64 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   const quickLinks = [
     { href: "/admin/courses", label: "Manage Courses", icon: <BookOpen className="h-4 w-4" />, count: totalCourses },
-    { href: "/admin/users", label: "Manage Users", icon: <Users className="h-4 w-4" />, count: mockUsers.length },
-    { href: "/admin/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" />, count: mockPayments.length },
+    { href: "/admin/users", label: "Manage Users", icon: <Users className="h-4 w-4" />, count: users.length },
+    { href: "/admin/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" />, count: payments.length },
     { href: "/admin/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4" />, count: null },
   ]
 
@@ -27,7 +48,7 @@ export default function AdminDashboard() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Welcome back, Rahul. Here is the platform overview.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Welcome back, {displayName}. Here is the platform overview.</p>
       </div>
 
       {/* Stats */}
@@ -110,7 +131,7 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-3">
-            {mockPayments.slice(0, 4).map(payment => (
+            {payments.slice(0, 4).map((payment) => (
               <div key={payment.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">{payment.userName}</p>

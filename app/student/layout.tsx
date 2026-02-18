@@ -1,11 +1,7 @@
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { DashboardAuthGuard } from "@/components/dashboard/dashboard-auth-guard"
 
 export const metadata = { title: { default: "Student Dashboard", template: "%s | ZIVO Academy" } }
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <DashboardShell role="student" userName="Arjun Mehta" userEmail="arjun@example.com">
-      {children}
-    </DashboardShell>
-  )
+  return <DashboardAuthGuard role="student">{children}</DashboardAuthGuard>
 }

@@ -1,16 +1,27 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Clock, Video, ExternalLink, PlayCircle } from "lucide-react"
-import { mockLiveSessions } from "@/lib/mock-data"
+import { Calendar, Clock, Video, PlayCircle } from "lucide-react"
+import { useLiveSessions } from "@/lib/firebase/hooks"
 import { formatDateTime } from "@/lib/format"
 
 export default function StudentLiveSessionsPage() {
-  const upcoming = mockLiveSessions.filter(s => s.status === "upcoming")
-  const completed = mockLiveSessions.filter(s => s.status === "completed")
+  const { data: upcoming = [], loading: upcomingLoading } = useLiveSessions("upcoming")
+  const { data: completed = [], loading: completedLoading } = useLiveSessions("completed")
+  const loading = upcomingLoading || completedLoading
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-56 animate-pulse rounded bg-muted" />
+        <div className="h-12 w-full max-w-md animate-pulse rounded bg-muted" />
+        <div className="h-40 animate-pulse rounded-lg bg-muted" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +41,7 @@ export default function StudentLiveSessionsPage() {
             <Card className="border border-border"><CardContent className="py-10 text-center text-muted-foreground">No upcoming live sessions</CardContent></Card>
           ) : (
             <div className="flex flex-col gap-4">
-              {upcoming.map(session => (
+              {upcoming.map((session) => (
                 <Card key={session.id} className="border border-border">
                   <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-col gap-2">
@@ -62,7 +73,7 @@ export default function StudentLiveSessionsPage() {
             <Card className="border border-border"><CardContent className="py-10 text-center text-muted-foreground">No recordings available yet</CardContent></Card>
           ) : (
             <div className="flex flex-col gap-4">
-              {completed.map(session => (
+              {completed.map((session) => (
                 <Card key={session.id} className="border border-border">
                   <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-col gap-2">

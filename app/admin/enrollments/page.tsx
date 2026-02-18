@@ -7,16 +7,45 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
-import { Search, MoreVertical, Ban, RefreshCw } from "lucide-react"
-import { mockEnrollments, mockUsers } from "@/lib/mock-data"
+import { Search, MoreVertical, Ban, RefreshCw, GraduationCap } from "lucide-react"
+import { useAllEnrollments, useAllUsers } from "@/lib/firebase/hooks"
 import { formatDate } from "@/lib/format"
 
 export default function AdminEnrollmentsPage() {
+  const { data: enrollments = [], loading, error, refetch } = useAllEnrollments()
+  const { data: users = [] } = useAllUsers()
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-64 animate-pulse rounded-lg bg-muted" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Enrollments</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Failed to load enrollments</p>
+        </div>
+        <Card className="border border-destructive/50">
+          <CardContent className="flex flex-col items-center gap-3 py-12">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Enrollments</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{mockEnrollments.length} total enrollments</p>
+        <p className="mt-1 text-sm text-muted-foreground">{enrollments.length} total enrollments</p>
       </div>
 
       <div className="relative">
@@ -38,8 +67,16 @@ export default function AdminEnrollmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockEnrollments.map(e => {
-                const user = mockUsers.find(u => u.id === e.userId)
+              {enrollments.length === 0 ? (
+                <TableRow key="empty">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                    <GraduationCap className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                    <p>No enrollments yet</p>
+                    <p className="text-xs mt-1">Enrollments appear when students purchase or are assigned to courses.</p>
+                  </TableCell>
+                </TableRow>
+              ) : enrollments.map((e) => {
+                const user = users.find((u) => u.id === e.userId)
                 return (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{user?.name || "Unknown"}</TableCell>

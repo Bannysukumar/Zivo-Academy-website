@@ -1,6 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
-import { mockCategories } from "@/lib/mock-data"
+import { useCategories } from "@/lib/firebase/hooks"
 import {
   Code, BarChart3, Smartphone, Cloud, Palette, Shield, Brain, Megaphone
 } from "lucide-react"
@@ -17,6 +19,25 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export function CategoriesSection() {
+  const { data: categories, loading } = useCategories()
+
+  if (loading) {
+    return (
+      <section className="bg-background py-16 md:py-20">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-10 h-10 w-64 animate-pulse rounded bg-muted mx-auto" />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (categories.length === 0) return null
+
   return (
     <section className="bg-background py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4">
@@ -30,7 +51,7 @@ export function CategoriesSection() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {mockCategories.map(cat => (
+          {categories.map((cat) => (
             <Link key={cat.id} href={`/courses?category=${cat.slug}`}>
               <Card className="flex flex-col items-center gap-3 border border-border p-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">

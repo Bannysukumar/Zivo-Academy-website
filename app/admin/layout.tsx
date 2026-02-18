@@ -1,9 +1,5 @@
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { DashboardAuthGuard } from "@/components/dashboard/dashboard-auth-guard"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <DashboardShell role="admin" userName="Rahul Verma" userEmail="rahul@example.com">
-      {children}
-    </DashboardShell>
-  )
+  return <DashboardAuthGuard role="admin">{children}</DashboardAuthGuard>
 }

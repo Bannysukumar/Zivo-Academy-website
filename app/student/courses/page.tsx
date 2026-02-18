@@ -7,13 +7,28 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Play, CheckCircle2, ArrowRight } from "lucide-react"
-import { mockEnrollments } from "@/lib/mock-data"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useEnrollments } from "@/lib/firebase/hooks"
 import { formatDate } from "@/lib/format"
 
 export default function StudentCoursesPage() {
-  const enrollments = mockEnrollments.filter(e => e.userId === "u1")
-  const active = enrollments.filter(e => e.status === "active")
-  const completed = enrollments.filter(e => e.status === "completed")
+  const { user } = useAuth()
+  const { data: enrollments = [], loading } = useEnrollments(user?.id)
+  const active = enrollments.filter((e) => e.status === "active")
+  const completed = enrollments.filter((e) => e.status === "completed")
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +45,7 @@ export default function StudentCoursesPage() {
 
         <TabsContent value="active" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {active.map(e => (
+            {active.map((e) => (
               <Card key={e.id} className="border border-border">
                 <CardContent className="flex flex-col gap-4 p-5">
                   <div className="flex items-start gap-3">
@@ -59,7 +74,7 @@ export default function StudentCoursesPage() {
 
         <TabsContent value="completed" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {completed.map(e => (
+            {completed.map((e) => (
               <Card key={e.id} className="border border-border">
                 <CardContent className="flex flex-col gap-4 p-5">
                   <div className="flex items-start gap-3">
@@ -68,7 +83,7 @@ export default function StudentCoursesPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-foreground">{e.courseTitle}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Completed {formatDate(e.completedAt!)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Completed {e.completedAt ? formatDate(e.completedAt) : "—"}</p>
                     </div>
                     <Badge className="bg-success text-success-foreground">Completed</Badge>
                   </div>

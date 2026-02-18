@@ -118,6 +118,32 @@ export interface Progress {
   completedAt?: string
 }
 
+export interface Assignment {
+  id: string
+  instructorId: string
+  courseId: string
+  courseName: string
+  title: string
+  description: string
+  dueDate?: string
+  createdAt: string
+}
+
+export interface AssignmentSubmission {
+  id: string
+  instructorId: string
+  studentId: string
+  studentName: string
+  courseId: string
+  courseName: string
+  lessonId?: string
+  assignmentId?: string
+  assignmentTitle: string
+  submittedAt: string
+  status: "pending" | "graded"
+  grade: number | null
+}
+
 export interface LiveSession {
   id: string
   courseId: string
@@ -166,6 +192,12 @@ export interface Certificate {
   issuedAt: string
   certificateUrl: string
   verificationSlug: string
+}
+
+export interface CertificateTemplate {
+  id: string
+  templateImageUrl: string
+  updatedAt: string
 }
 
 export interface SupportTicket {
@@ -241,6 +273,16 @@ export interface Testimonial {
 export interface CartItem {
   courseId: string
   course: Course
+}
+
+export interface Announcement {
+  id: string
+  instructorId: string
+  courseId: string
+  courseTitle: string
+  title: string
+  message: string
+  createdAt: string
 }
 
 export interface Notification {

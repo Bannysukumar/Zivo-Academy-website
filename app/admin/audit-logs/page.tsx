@@ -7,10 +7,21 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollText, Search, Download, BookOpen, Users, Tag, ShieldCheck } from "lucide-react"
-import { mockAuditLogs } from "@/lib/mock-data"
+import { useAuditLogs } from "@/lib/firebase/hooks"
 import { formatDateTime } from "@/lib/format"
 
 export default function AdminAuditLogsPage() {
+  const { data: logs = [], loading, error, refetch } = useAuditLogs()
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-64 animate-pulse rounded-lg bg-muted" />
+      </div>
+    )
+  }
+
   const actionIcon = (action: string) => {
     if (action.startsWith("course")) return <BookOpen className="h-3.5 w-3.5 text-primary" />
     if (action.startsWith("user")) return <Users className="h-3.5 w-3.5 text-warning" />
@@ -34,6 +45,15 @@ export default function AdminAuditLogsPage() {
         </div>
         <Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export Logs</Button>
       </div>
+
+      {error && (
+        <Card className="border border-destructive/50">
+          <CardContent className="flex flex-col items-center gap-3 py-6">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => refetch?.()}>Retry</Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
@@ -65,7 +85,11 @@ export default function AdminAuditLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockAuditLogs.map(log => (
+              {logs.length === 0 && !error ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">No audit logs yet</TableCell>
+                </TableRow>
+              ) : logs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

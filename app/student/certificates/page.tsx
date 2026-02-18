@@ -1,14 +1,30 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Award, Download, ExternalLink, Share2 } from "lucide-react"
-import { mockCertificates } from "@/lib/mock-data"
+import { Award, Download, Share2, ArrowRight } from "lucide-react"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useCertificates } from "@/lib/firebase/hooks"
 import { formatDate } from "@/lib/format"
 
 export default function StudentCertificatesPage() {
-  const certificates = mockCertificates.filter(c => c.userId === "u1")
+  const { user } = useAuth()
+  const { data: certificates = [], loading } = useCertificates(user?.id)
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-56 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-52 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -22,11 +38,14 @@ export default function StudentCertificatesPage() {
           <CardContent className="flex flex-col items-center gap-3 py-16">
             <Award className="h-12 w-12 text-muted-foreground/30" />
             <p className="text-muted-foreground">No certificates yet. Complete a course to earn one!</p>
+            <Button className="mt-2 gap-2" asChild>
+              <Link href="/courses">Browse Courses <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {certificates.map(cert => (
+          {certificates.map((cert) => (
             <Card key={cert.id} className="border border-border overflow-hidden">
               <div className="flex aspect-[16/9] items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
                 <div className="flex flex-col items-center gap-2 text-center">

@@ -6,33 +6,56 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  BookOpen, Users, Star, IndianRupee, TrendingUp, ArrowRight,
-  Eye, BarChart3
+  BookOpen, Users, Star, IndianRupee, ArrowRight
 } from "lucide-react"
-import { mockCourses, mockEnrollments, mockPayments, mockReviews } from "@/lib/mock-data"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useCoursesByInstructorId, useAllEnrollments, useAllPayments, useAllReviews } from "@/lib/firebase/hooks"
 import { formatPrice } from "@/lib/format"
 
 export default function InstructorDashboard() {
-  const instructorCourses = mockCourses.filter(c => c.instructorId === "u2")
-  const totalStudents = mockEnrollments.length
-  const totalRevenue = mockPayments.filter(p => p.status === "captured").reduce((s, p) => s + p.amount, 0)
-  const avgRating = instructorCourses.length > 0
-    ? (instructorCourses.reduce((s, c) => s + c.rating, 0) / instructorCourses.length).toFixed(1)
-    : "0"
+  const { user } = useAuth()
+  const { data: instructorCourses = [], loading: coursesLoading } = useCoursesByInstructorId(user?.id)
+  const { data: enrollments = [] } = useAllEnrollments()
+  const { data: payments = [] } = useAllPayments()
+  const { data: allReviews = [] } = useAllReviews()
+
+  const instructorCourseIds = new Set(instructorCourses.map((c) => c.id))
+  const totalStudents = enrollments.filter((e) => instructorCourseIds.has(e.courseId)).length
+  const totalRevenue = payments
+    .filter((p) => p.status === "captured" && instructorCourseIds.has(p.courseId))
+    .reduce((s, p) => s + p.amount, 0)
+  const avgRating =
+    instructorCourses.length > 0
+      ? (instructorCourses.reduce((s, c) => s + c.rating, 0) / instructorCourses.length).toFixed(1)
+      : "0"
+  const recentReviews = allReviews.filter((r) => instructorCourseIds.has(r.courseId)).slice(0, 4)
+  const displayName = user?.name ?? "Instructor"
+
+  if (coursesLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-64 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Instructor Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Welcome back, Priya. Here is your overview.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Welcome back, {displayName}. Here is your overview.</p>
         </div>
         <Button asChild className="gap-2">
           <Link href="/instructor/courses/new"><BookOpen className="h-4 w-4" /> Create Course</Link>
         </Button>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border border-border">
           <CardContent className="flex items-center gap-3 p-4">
@@ -80,7 +103,6 @@ export default function InstructorDashboard() {
         </Card>
       </div>
 
-      {/* Courses Table */}
       <Card className="border border-border">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Your Courses</CardTitle>
@@ -100,9 +122,9 @@ export default function InstructorDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {instructorCourses.map(course => {
-                const revenue = mockPayments
-                  .filter(p => p.courseId === course.id && p.status === "captured")
+              {instructorCourses.map((course) => {
+                const revenue = payments
+                  .filter((p) => p.courseId === course.id && p.status === "captured")
                   .reduce((s, p) => s + p.amount, 0)
                 return (
                   <TableRow key={course.id}>
@@ -132,26 +154,29 @@ export default function InstructorDashboard() {
         </CardContent>
       </Card>
 
-      {/* Recent Reviews */}
       <Card className="border border-border">
         <CardHeader>
           <CardTitle className="text-base">Recent Reviews</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
-            {mockReviews.slice(0, 4).map(review => (
-              <div key={review.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-                <div className="flex gap-0.5 pt-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`h-3 w-3 ${i < review.rating ? "fill-warning text-warning" : "text-border"}`} />
-                  ))}
+            {recentReviews.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">No reviews yet</p>
+            ) : (
+              recentReviews.map((review) => (
+                <div key={review.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                  <div className="flex gap-0.5 pt-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`h-3 w-3 ${i < review.rating ? "fill-warning text-warning" : "text-border"}`} />
+                    ))}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-foreground">{review.comment}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">by {review.userName} - {review.courseId}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">{review.comment}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">by {review.userName} - {review.courseId === "c1" ? "Full-Stack Web Development" : "Data Science Bootcamp"}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

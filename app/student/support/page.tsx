@@ -9,11 +9,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { HelpCircle, Plus, MessageSquare, Clock, CheckCircle2, AlertCircle } from "lucide-react"
-import { mockTickets } from "@/lib/mock-data"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useSupportTickets } from "@/lib/firebase/hooks"
 import { formatDate, getInitials } from "@/lib/format"
 
 export default function StudentSupportPage() {
-  const tickets = mockTickets.filter(t => t.userId === "u1")
+  const { user } = useAuth()
+  const { data: tickets = [], loading } = useSupportTickets(user?.id)
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null)
 
   const statusIcon = (status: string) => {
@@ -34,6 +36,15 @@ export default function StudentSupportPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-40 animate-pulse rounded-lg bg-muted" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -45,7 +56,7 @@ export default function StudentSupportPage() {
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> New Ticket</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent aria-describedby={undefined}>
             <DialogHeader><DialogTitle>Create Support Ticket</DialogTitle></DialogHeader>
             <div className="flex flex-col gap-4 pt-2">
               <Input placeholder="Subject" />
@@ -82,7 +93,7 @@ export default function StudentSupportPage() {
                   </Badge>
                 </div>
 
-                {ticket.replies.length > 0 && (
+                {ticket.replies && ticket.replies.length > 0 && (
                   <div className="flex flex-col gap-3 border-t border-border pt-4">
                     <p className="text-xs font-medium text-muted-foreground">Replies ({ticket.replies.length})</p>
                     {ticket.replies.map(reply => (

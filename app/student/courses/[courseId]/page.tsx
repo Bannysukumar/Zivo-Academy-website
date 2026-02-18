@@ -1,5 +1,7 @@
 "use client"
 
+import { use } from "react"
+import { notFound } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,28 +10,77 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import Link from "next/link"
 import {
-  Play, CheckCircle2, Lock, FileText, ClipboardList, BookOpen,
-  Download, StickyNote, Bookmark, ChevronRight
+  Play, CheckCircle2, FileText, ClipboardList, BookOpen,
+  Download, Lock
 } from "lucide-react"
-import { mockSections, mockCourses } from "@/lib/mock-data"
+import { useCourseById, useSections, useEnrollments } from "@/lib/firebase/hooks"
+import { useAuth } from "@/lib/firebase/auth-context"
 import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card"
 
-export default function CoursePlayerPage() {
-  const course = mockCourses[0]
-  const sections = mockSections.filter(s => s.courseId === course.id)
-  const allLessons = sections.flatMap(s => s.lessons)
-  const [currentLessonId, setCurrentLessonId] = useState(allLessons[0]?.id || "")
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set(["l1", "l2", "l3"]))
+export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = use(params)
+  const { user } = useAuth()
+  const { data: course, loading: courseLoading } = useCourseById(courseId)
+  const { data: sections = [], loading: sectionsLoading } = useSections(courseId)
+  const { data: enrollments = [], loading: enrollmentsLoading } = useEnrollments(user?.id)
+  const allLessons = sections.flatMap((s) => s.lessons ?? [])
+  const [currentLessonId, setCurrentLessonId] = useState(allLessons[0]?.id ?? "")
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState("")
 
-  const currentLesson = allLessons.find(l => l.id === currentLessonId) || allLessons[0]
-  const progressPct = Math.round((completedLessons.size / allLessons.length) * 100)
+  const enrollment = enrollments.find((e) => e.courseId === courseId && e.status !== "revoked")
+  const isEnrolled = !!enrollment
+
+  const loading = courseLoading || sectionsLoading || enrollmentsLoading
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="flex-1">
+          <div className="aspect-video animate-pulse rounded-lg bg-muted" />
+          <div className="mt-4 h-10 w-64 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="h-80 w-full animate-pulse rounded-lg bg-muted lg:w-80" />
+      </div>
+    )
+  }
+
+  if (!course) notFound()
+
+  if (!user) {
+    return (
+      <Card className="mx-4 mt-6 border border-border">
+        <CardContent className="flex flex-col items-center gap-4 py-12">
+          <Lock className="h-12 w-12 text-muted-foreground" />
+          <p className="text-center text-muted-foreground">Sign in to access course content.</p>
+          <Button asChild><Link href={`/auth/login?redirect=/student/courses/${courseId}`}>Sign In</Link></Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!isEnrolled) {
+    return (
+      <Card className="mx-4 mt-6 border border-border">
+        <CardContent className="flex flex-col items-center gap-4 py-12">
+          <Lock className="h-12 w-12 text-muted-foreground" />
+          <p className="text-center text-muted-foreground">You are not enrolled in this course. Enroll to access all lessons and track progress.</p>
+          <Button asChild><Link href={`/courses/${course.slug}`}>View Course & Enroll</Link></Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const currentLesson = allLessons.find((l) => l.id === currentLessonId) ?? allLessons[0]
+  const progressPct = allLessons.length ? Math.round((completedLessons.size / allLessons.length) * 100) : 0
 
   const markComplete = () => {
-    setCompletedLessons(prev => new Set([...prev, currentLessonId]))
-    const currentIdx = allLessons.findIndex(l => l.id === currentLessonId)
-    if (currentIdx < allLessons.length - 1) {
+    if (!currentLessonId) return
+    setCompletedLessons((prev) => new Set([...prev, currentLessonId]))
+    const currentIdx = allLessons.findIndex((l) => l.id === currentLessonId)
+    if (currentIdx >= 0 && currentIdx < allLessons.length - 1) {
       setCurrentLessonId(allLessons[currentIdx + 1].id)
     }
   }
@@ -46,9 +97,7 @@ export default function CoursePlayerPage() {
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
-      {/* Video / Content Area */}
       <div className="flex-1">
-        {/* Video Player Placeholder */}
         <div className="flex aspect-video items-center justify-center rounded-lg bg-foreground">
           <div className="flex flex-col items-center gap-3">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background/20">
@@ -58,14 +107,13 @@ export default function CoursePlayerPage() {
           </div>
         </div>
 
-        {/* Lesson Info */}
         <div className="mt-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{currentLesson?.title}</h2>
             <p className="text-sm text-muted-foreground">{currentLesson?.duration}</p>
           </div>
           <div className="flex gap-2">
-            {!completedLessons.has(currentLessonId) && (
+            {currentLesson && !completedLessons.has(currentLessonId) && (
               <Button size="sm" onClick={markComplete} className="gap-1">
                 <CheckCircle2 className="h-4 w-4" /> Mark Complete
               </Button>
@@ -73,7 +121,6 @@ export default function CoursePlayerPage() {
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="notes" className="mt-4">
           <TabsList>
             <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -86,7 +133,7 @@ export default function CoursePlayerPage() {
               placeholder="Write your notes here..."
               rows={4}
               value={notes}
-              onChange={e => setNotes(e.target.value)}
+              onChange={(e) => setNotes(e.target.value)}
             />
             <Button size="sm" className="mt-2">Save Notes</Button>
           </TabsContent>
@@ -94,19 +141,22 @@ export default function CoursePlayerPage() {
           <TabsContent value="resources" className="mt-3">
             <Card className="border border-border">
               <CardContent className="flex flex-col gap-2 p-4">
-                {[
-                  { name: "Lesson Slides.pdf", size: "2.4 MB" },
-                  { name: "Project Starter.zip", size: "1.8 MB" },
-                ].map((r, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-md border border-border p-3">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-foreground">{r.name}</span>
-                      <span className="text-xs text-muted-foreground">{r.size}</span>
+                {currentLesson?.resources && currentLesson.resources.length > 0 ? (
+                  currentLesson.resources.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between rounded-md border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-foreground">{r.name}</span>
+                        <span className="text-xs text-muted-foreground">{r.size}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={r.url} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a>
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm"><Download className="h-4 w-4" /></Button>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No resources for this lesson</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -117,7 +167,6 @@ export default function CoursePlayerPage() {
         </Tabs>
       </div>
 
-      {/* Sidebar - Curriculum */}
       <div className="w-full shrink-0 lg:w-80">
         <Card className="border border-border">
           <CardContent className="p-0">
@@ -133,13 +182,13 @@ export default function CoursePlayerPage() {
             </div>
 
             <ScrollArea className="max-h-[60vh]">
-              {sections.map(section => (
+              {sections.map((section) => (
                 <div key={section.id}>
                   <div className="border-b border-border bg-secondary/50 px-4 py-2">
                     <p className="text-xs font-semibold text-foreground">{section.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{section.lessons.length} lessons</p>
+                    <p className="text-[10px] text-muted-foreground">{(section.lessons ?? []).length} lessons</p>
                   </div>
-                  {section.lessons.map(lesson => (
+                  {(section.lessons ?? []).map((lesson) => (
                     <button
                       key={lesson.id}
                       onClick={() => setCurrentLessonId(lesson.id)}

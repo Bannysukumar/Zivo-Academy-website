@@ -1,7 +1,8 @@
 import type {
   User, Category, Course, Section, Review, Enrollment, LiveSession,
   Payment, Coupon, Certificate, SupportTicket, ReferralEarning,
-  ReferralWallet, ReferralWithdrawal, AuditLog, Testimonial, Notification
+  ReferralWallet, ReferralWithdrawal, AuditLog, Testimonial, Notification,
+  AssignmentSubmission,
 } from "./types"
 
 // ==================== USERS ====================
@@ -317,4 +318,12 @@ export const mockNotifications: Notification[] = [
   { id: "n1", userId: "u1", title: "Live Session Tomorrow", message: "Advanced Routing Patterns Q&A starts at 10:00 AM IST", read: false, createdAt: "2026-02-19T08:00:00Z", type: "live_session" },
   { id: "n2", userId: "u1", title: "Referral Earning!", message: "You earned INR 500 from Sneha Patel's enrollment", read: true, createdAt: "2025-04-15T10:00:00Z", type: "referral" },
   { id: "n3", userId: "u1", title: "Certificate Ready", message: "Your Data Science course certificate is ready to download", read: true, createdAt: "2025-05-05T12:00:00Z", type: "certificate" },
+]
+
+// ==================== ASSIGNMENT SUBMISSIONS (instructorId u2 = Priya Sharma) ====================
+export const mockAssignmentSubmissions: AssignmentSubmission[] = [
+  { id: "sub1", instructorId: "u2", studentId: "u1", studentName: "Arjun Mehta", courseId: "c1", courseName: "Full-Stack Web Development with Next.js", assignmentTitle: "Build a React Component", submittedAt: "2025-08-10", status: "pending", grade: null },
+  { id: "sub2", instructorId: "u2", studentId: "u4", studentName: "Sneha Patel", courseId: "c1", courseName: "Full-Stack Web Development with Next.js", assignmentTitle: "Build a React Component", submittedAt: "2025-08-09", status: "graded", grade: 85 },
+  { id: "sub3", instructorId: "u2", studentId: "u1", studentName: "Arjun Mehta", courseId: "c1", courseName: "Full-Stack Web Development with Next.js", assignmentTitle: "Module 4 Assignment", submittedAt: "2025-08-12", status: "pending", grade: null },
+  { id: "sub4", instructorId: "u2", studentId: "u4", studentName: "Sneha Patel", courseId: "c1", courseName: "Full-Stack Web Development with Next.js", assignmentTitle: "Module 4 Assignment", submittedAt: "2025-08-11", status: "graded", grade: 92 },
 ]

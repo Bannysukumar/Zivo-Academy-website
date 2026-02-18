@@ -1,9 +1,5 @@
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { DashboardAuthGuard } from "@/components/dashboard/dashboard-auth-guard"
 
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <DashboardShell role="instructor" userName="Priya Sharma" userEmail="priya@example.com">
-      {children}
-    </DashboardShell>
-  )
+  return <DashboardAuthGuard role="instructor">{children}</DashboardAuthGuard>
 }

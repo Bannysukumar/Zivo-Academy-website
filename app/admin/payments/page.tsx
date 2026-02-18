@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, IndianRupee, CheckCircle2, XCircle, RefreshCw, Download } from "lucide-react"
-import { mockPayments } from "@/lib/mock-data"
+import { useAllPayments } from "@/lib/firebase/hooks"
 import { formatPrice, formatDate } from "@/lib/format"
 
 export default function AdminPaymentsPage() {
-  const captured = mockPayments.filter(p => p.status === "captured")
-  const failed = mockPayments.filter(p => p.status === "failed")
+  const { data: payments = [], loading } = useAllPayments()
+  const captured = payments.filter((p) => p.status === "captured")
+  const failed = payments.filter((p) => p.status === "failed")
   const totalRevenue = captured.reduce((s, p) => s + p.amount, 0)
 
   return (
@@ -19,7 +20,7 @@ export default function AdminPaymentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Payments</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{mockPayments.length} transactions total</p>
+          <p className="mt-1 text-sm text-muted-foreground">{payments.length} transactions total</p>
         </div>
         <Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export CSV</Button>
       </div>
@@ -65,7 +66,7 @@ export default function AdminPaymentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockPayments.map(p => (
+              {payments.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.userName}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.courseTitle}</TableCell>

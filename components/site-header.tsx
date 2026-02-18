@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,6 +16,7 @@ import {
   User, BookOpen, LayoutDashboard, LogOut, Settings, Users, Share2
 } from "lucide-react"
 import { getInitials } from "@/lib/format"
+import { useAuth } from "@/lib/firebase/auth-context"
 import type { User as UserType } from "@/lib/types"
 
 interface SiteHeaderProps {
@@ -22,8 +24,17 @@ interface SiteHeaderProps {
   cartCount?: number
 }
 
-export function SiteHeader({ user, cartCount = 0 }: SiteHeaderProps) {
+export function SiteHeader({ user: userProp, cartCount = 0 }: SiteHeaderProps) {
+  const { user: authUser, logout } = useAuth()
+  const user = userProp ?? authUser
   const [mobileOpen, setMobileOpen] = useState(false)
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await logout()
+    router.push("/")
+    router.refresh()
+  }
 
   const navLinks = [
     { href: "/courses", label: "Courses" },
@@ -151,10 +162,8 @@ export function SiteHeader({ user, cartCount = 0 }: SiteHeaderProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/" className="flex items-center gap-2 text-destructive">
-                      <LogOut className="h-4 w-4" /> Sign Out
-                    </Link>
+                  <DropdownMenuItem className="flex items-center gap-2 text-destructive" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4" /> Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

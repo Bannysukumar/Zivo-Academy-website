@@ -1,11 +1,31 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CourseCard } from "@/components/course-card"
-import { mockCourses } from "@/lib/mock-data"
+import { useCourses } from "@/lib/firebase/hooks"
 import { ArrowRight } from "lucide-react"
 
 export function FeaturedCoursesSection() {
-  const featured = mockCourses.filter(c => c.status === "published").slice(0, 3)
+  const { data: courses, loading } = useCourses({ publishedOnly: true })
+  const featured = courses.slice(0, 3)
+
+  if (loading) {
+    return (
+      <section className="bg-card py-16 md:py-20">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-10 h-10 w-64 animate-pulse rounded bg-muted" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-80 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (featured.length === 0) return null
 
   return (
     <section className="bg-card py-16 md:py-20">
@@ -27,7 +47,7 @@ export function FeaturedCoursesSection() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {featured.map(course => (
+          {featured.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,12 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { HelpCircle, Clock, CheckCircle2, AlertCircle, MessageSquare, Send } from "lucide-react"
-import { mockTickets } from "@/lib/mock-data"
+import { useAllSupportTickets } from "@/lib/firebase/hooks"
 import { formatDate, getInitials } from "@/lib/format"
 
 export default function AdminSupportPage() {
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(mockTickets[0]?.id || null)
-  const selectedTicket = mockTickets.find(t => t.id === selectedTicketId)
+  const { data: tickets = [], loading, error, refetch } = useAllSupportTickets()
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const selectedTicket = tickets.find((t) => t.id === selectedTicketId)
+  useEffect(() => {
+    if (tickets.length > 0 && !selectedTicketId) setSelectedTicketId(tickets[0].id)
+  }, [tickets, selectedTicketId])
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -37,13 +41,26 @@ export default function AdminSupportPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Support Tickets</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{mockTickets.length} tickets, {mockTickets.filter(t => t.status === "open").length} open</p>
+        <p className="mt-1 text-sm text-muted-foreground">{tickets.length} tickets, {tickets.filter((t) => t.status === "open").length} open</p>
       </div>
+
+      {error && (
+        <Card className="border border-destructive/50">
+          <CardContent className="flex flex-col items-center gap-3 py-6">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => refetch?.()}>Retry</Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[350px_1fr]">
         {/* Ticket List */}
         <div className="flex flex-col gap-2">
-          {mockTickets.map(ticket => (
+          {tickets.length === 0 && !error ? (
+            <Card className="border border-border">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">No support tickets yet</CardContent>
+            </Card>
+          ) : tickets.map((ticket) => (
             <Card
               key={ticket.id}
               className={`cursor-pointer border transition-colors ${selectedTicketId === ticket.id ? "border-primary" : "border-border hover:border-primary/30"}`}
@@ -57,8 +74,8 @@ export default function AdminSupportPage() {
                 <p className="text-sm font-medium text-foreground">{ticket.subject}</p>
                 <p className="line-clamp-1 text-xs text-muted-foreground">{ticket.message}</p>
                 <p className="text-[10px] text-muted-foreground">{formatDate(ticket.createdAt)}</p>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           ))}
         </div>
 
@@ -86,7 +103,7 @@ export default function AdminSupportPage() {
                 <p className="text-sm leading-relaxed text-foreground">{selectedTicket.message}</p>
               </div>
 
-              {selectedTicket.replies.length > 0 && (
+              {selectedTicket.replies && selectedTicket.replies.length > 0 && (
                 <div className="flex flex-col gap-3">
                   {selectedTicket.replies.map(reply => (
                     <div key={reply.id} className={`flex gap-3 rounded-lg p-3 ${reply.isAdmin ? "bg-primary/5" : "bg-secondary/50"}`}>

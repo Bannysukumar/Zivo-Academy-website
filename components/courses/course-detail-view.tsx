@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +15,8 @@ import {
   CheckCircle2, ShoppingCart, Heart, Share2, Globe, BarChart3, Award, Video
 } from "lucide-react"
 import { formatPrice, getInitials } from "@/lib/format"
-import { mockSections, mockReviews } from "@/lib/mock-data"
+import { useSections, useReviews } from "@/lib/firebase/hooks"
+import { useCart } from "@/lib/cart-context"
 import type { Course } from "@/lib/types"
 
 interface CourseDetailViewProps {
@@ -22,9 +24,11 @@ interface CourseDetailViewProps {
 }
 
 export function CourseDetailView({ course }: CourseDetailViewProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
-  const sections = mockSections.filter(s => s.courseId === course.id)
-  const reviews = mockReviews.filter(r => r.courseId === course.id)
+  const { addItem, isInCart } = useCart()
+  const { data: sections = [] } = useSections(course.id)
+  const { data: reviews = [] } = useReviews(course.id)
   const totalLessons = sections.reduce((acc, s) => acc + s.lessons.length, 0)
   const freeLessons = sections.reduce((acc, s) => acc + s.lessons.filter(l => l.isFree).length, 0)
   const discount = Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
@@ -93,7 +97,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
 
             {/* Sticky Price Card (desktop) */}
             <div className="hidden lg:block">
-              <PriceCard course={course} discount={discount} totalLessons={totalLessons} />
+              <PriceCard course={course} discount={discount} totalLessons={totalLessons} onAddToCart={() => addItem(course)} onBuyNow={() => { addItem(course); router.push("/cart") }} isInCart={isInCart(course.id)} />
             </div>
           </div>
         </div>
@@ -105,7 +109,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
           <div className="lg:col-span-2">
             {/* Mobile Price Card */}
             <div className="mb-6 lg:hidden">
-              <PriceCard course={course} discount={discount} totalLessons={totalLessons} />
+              <PriceCard course={course} discount={discount} totalLessons={totalLessons} onAddToCart={() => addItem(course)} onBuyNow={() => { addItem(course); router.push("/cart") }} isInCart={isInCart(course.id)} />
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -294,7 +298,21 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
   )
 }
 
-function PriceCard({ course, discount, totalLessons }: { course: Course; discount: number; totalLessons: number }) {
+function PriceCard({
+  course,
+  discount,
+  totalLessons,
+  onAddToCart,
+  onBuyNow,
+  isInCart,
+}: {
+  course: Course
+  discount: number
+  totalLessons: number
+  onAddToCart: () => void
+  onBuyNow: () => void
+  isInCart: boolean
+}) {
   return (
     <Card className="sticky top-20 border border-border shadow-lg">
       <CardContent className="flex flex-col gap-4 p-6">
@@ -320,10 +338,10 @@ function PriceCard({ course, discount, totalLessons }: { course: Course; discoun
         </div>
 
         {/* Buttons */}
-        <Button size="lg" className="w-full gap-2">
-          <ShoppingCart className="h-4 w-4" /> Add to Cart
+        <Button size="lg" className="w-full gap-2" onClick={onAddToCart} disabled={isInCart}>
+          <ShoppingCart className="h-4 w-4" /> {isInCart ? "In Cart" : "Add to Cart"}
         </Button>
-        <Button size="lg" variant="outline" className="w-full">
+        <Button size="lg" variant="outline" className="w-full" onClick={onBuyNow}>
           Buy Now
         </Button>
 

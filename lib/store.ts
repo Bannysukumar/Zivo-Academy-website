@@ -1,10 +1,8 @@
 "use client"
 
-import { createContext, useContext } from "react"
 import type { User, CartItem, Notification } from "./types"
-import { mockUsers, mockNotifications } from "./mock-data"
 
-// Simple context-based store (replaces Zustand for demo)
+// App state types (user/notifications come from Firebase Auth + Firestore)
 export interface AppState {
   user: User | null
   cart: CartItem[]
@@ -16,13 +14,10 @@ export interface AppState {
   markNotificationRead: (id: string) => void
 }
 
-// Demo auth helpers
-export function getDemoUser(role: string = "student"): User | null {
-  return mockUsers.find(u => u.role === role) || null
+export function getDemoUser(_role?: string): User | null {
+  return null
 }
 
-export function getDemoNotifications(userId: string): Notification[] {
-  return mockNotifications.filter(n => n.userId === userId)
+export function getDemoNotifications(_userId: string): Notification[] {
+  return []
 }
-
-// Pure format utils are in @/lib/format - import them from there directly

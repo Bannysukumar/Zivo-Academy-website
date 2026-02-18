@@ -2,10 +2,12 @@ import type { Metadata } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider } from '@/lib/firebase/auth-context'
+import { CartProvider } from '@/lib/cart-context'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" })
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "optional" })
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "optional" })
 
 export const metadata: Metadata = {
   title: {
@@ -31,11 +33,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
-      <body className="font-sans antialiased">
-        {children}
-        <Toaster />
-        <Analytics />
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+      <body className="font-sans antialiased" suppressHydrationWarning>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <Toaster />
+            <Analytics />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )

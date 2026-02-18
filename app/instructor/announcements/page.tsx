@@ -9,19 +9,58 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Megaphone, Plus, Users, Trash2 } from "lucide-react"
-import { mockCourses } from "@/lib/mock-data"
+import { Megaphone, Plus, Trash2, Users } from "lucide-react"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useCoursesByInstructorId, useAnnouncementsByInstructorId } from "@/lib/firebase/hooks"
 import { formatDate } from "@/lib/format"
 import { toast } from "sonner"
 
-const mockAnnouncements = [
-  { id: "a1", courseId: "c1", courseTitle: "Full-Stack Web Development with Next.js", title: "New Module Released: Server Actions", message: "Module 4 on Database & API Routes is now live! Check out the new lessons on Server Actions and Prisma ORM.", createdAt: "2025-08-15" },
-  { id: "a2", courseId: "c1", courseTitle: "Full-Stack Web Development with Next.js", title: "Upcoming Live Q&A Session", message: "Join me for a live Q&A on Advanced Routing Patterns this Saturday at 10 AM IST.", createdAt: "2025-08-10" },
-  { id: "a3", courseId: "c2", courseTitle: "Data Science & Machine Learning Bootcamp", title: "Course Update: TensorFlow 2.x", message: "I have updated the deep learning section to use TensorFlow 2.x. All notebooks have been refreshed.", createdAt: "2025-07-20" },
-]
-
 export default function InstructorAnnouncementsPage() {
-  const [announcements] = useState(mockAnnouncements)
+  const { user, firebaseUser } = useAuth()
+  const { data: instructorCourses = [], loading: coursesLoading } = useCoursesByInstructorId(user?.id)
+  const { data: announcements = [], loading: announcementsLoading, refetch } = useAnnouncementsByInstructorId(user?.id)
+  const loading = coursesLoading || announcementsLoading
+
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [courseId, setCourseId] = useState("all")
+  const [title, setTitle] = useState("")
+  const [message, setMessage] = useState("")
+  const [sending, setSending] = useState(false)
+
+  const handleSendAnnouncement = async () => {
+    if (!title.trim()) {
+      toast.error("Enter an announcement title")
+      return
+    }
+    const token = await firebaseUser?.getIdToken()
+    if (!token) {
+      toast.error("Sign in again to send announcements")
+      return
+    }
+    setSending(true)
+    try {
+      const res = await fetch("/api/instructor/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ courseId: courseId === "all" ? undefined : courseId, title: title.trim(), message: message.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? "Failed to send announcement")
+        return
+      }
+      toast.success("Announcement sent!")
+      setDialogOpen(false)
+      setTitle("")
+      setMessage("")
+      setCourseId("all")
+      refetch?.()
+    } catch {
+      toast.error("Failed to send announcement")
+    } finally {
+      setSending(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,20 +69,20 @@ export default function InstructorAnnouncementsPage() {
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Announcements</h1>
           <p className="mt-1 text-sm text-muted-foreground">Send updates and notifications to your students</p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> New Announcement</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
             <div className="flex flex-col gap-4 pt-2">
               <div className="flex flex-col gap-2">
                 <Label>Course</Label>
-                <Select>
+                <Select value={courseId} onValueChange={setCourseId}>
                   <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Courses</SelectItem>
-                    {mockCourses.filter(c => c.instructorId === "u2").map(c => (
+                    {instructorCourses.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -51,19 +90,25 @@ export default function InstructorAnnouncementsPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Title</Label>
-                <Input placeholder="Announcement title" />
+                <Input placeholder="Announcement title" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Message</Label>
-                <Textarea placeholder="Write your announcement..." rows={4} />
+                <Textarea placeholder="Write your announcement..." rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
               </div>
-              <Button onClick={() => toast.success("Announcement sent!")}>Send Announcement</Button>
+              <Button onClick={handleSendAnnouncement} disabled={sending}>{sending ? "Sending…" : "Send Announcement"}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {announcements.length === 0 ? (
+      {loading ? (
+        <Card className="border border-border">
+          <CardContent className="flex flex-col items-center gap-3 py-16">
+            <p className="text-muted-foreground">Loading announcements…</p>
+          </CardContent>
+        </Card>
+      ) : announcements.length === 0 ? (
         <Card className="border border-border">
           <CardContent className="flex flex-col items-center gap-3 py-16">
             <Megaphone className="h-12 w-12 text-muted-foreground/30" />
@@ -72,7 +117,7 @@ export default function InstructorAnnouncementsPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          {announcements.map(ann => (
+          {announcements.map((ann) => (
             <Card key={ann.id} className="border border-border">
               <CardContent className="flex flex-col gap-3 p-5">
                 <div className="flex items-start justify-between">

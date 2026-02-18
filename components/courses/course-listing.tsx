@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
 import { CourseCard } from "@/components/course-card"
-import { mockCourses, mockCategories } from "@/lib/mock-data"
+import { useCourses, useCategories } from "@/lib/firebase/hooks"
 import { Search, SlidersHorizontal, X } from "lucide-react"
 
 type SortOption = "popular" | "newest" | "price-low" | "price-high" | "rating"
@@ -21,17 +21,25 @@ export function CourseListing() {
   const [sort, setSort] = useState<SortOption>("popular")
   const [showFilters, setShowFilters] = useState(false)
 
-  const published = mockCourses.filter(c => c.status === "published")
+  const { data: courses, loading: coursesLoading, refetch } = useCourses({ publishedOnly: true })
+  const { data: categories, loading: categoriesLoading } = useCategories()
+  const published = courses.filter((c) => (c.status === "published"))
+
+  useEffect(() => {
+    const onFocus = () => refetch()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [refetch])
 
   const filtered = useMemo(() => {
     let result = [...published]
 
     if (search) {
       const q = search.toLowerCase()
-      result = result.filter(c =>
-        c.title.toLowerCase().includes(q) ||
-        c.categoryName.toLowerCase().includes(q) ||
-        c.tags.some(t => t.includes(q))
+      result = result.filter((c) =>
+        (c.title ?? "").toLowerCase().includes(q) ||
+        (c.categoryName ?? "").toLowerCase().includes(q) ||
+        (c.tags ?? []).some((t) => String(t).toLowerCase().includes(q))
       )
     }
     if (category !== "all") result = result.filter(c => c.categoryId === category)
@@ -39,11 +47,11 @@ export function CourseListing() {
     if (type !== "all") result = result.filter(c => c.type === type)
 
     switch (sort) {
-      case "popular": result.sort((a, b) => b.enrollmentCount - a.enrollmentCount); break
-      case "newest": result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
-      case "price-low": result.sort((a, b) => a.price - b.price); break
-      case "price-high": result.sort((a, b) => b.price - a.price); break
-      case "rating": result.sort((a, b) => b.rating - a.rating); break
+      case "popular": result.sort((a, b) => (b.enrollmentCount ?? 0) - (a.enrollmentCount ?? 0)); break
+      case "newest": result.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()); break
+      case "price-low": result.sort((a, b) => (a.price ?? 0) - (b.price ?? 0)); break
+      case "price-high": result.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); break
+      case "rating": result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)); break
     }
 
     return result
@@ -99,7 +107,7 @@ export function CourseListing() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {mockCategories.map(cat => (
+                  {categories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -157,7 +165,13 @@ export function CourseListing() {
         </div>
 
         {/* Course Grid */}
-        {filtered.length > 0 ? (
+        {coursesLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-80 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(course => (
               <CourseCard key={course.id} course={course} />
