@@ -7,13 +7,18 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { HelpCircle, Clock, CheckCircle2, AlertCircle, MessageSquare, Send } from "lucide-react"
+import { HelpCircle, Clock, CheckCircle2, AlertCircle, MessageSquare, Send, Loader2 } from "lucide-react"
 import { useAllSupportTickets } from "@/lib/firebase/hooks"
+import { useAuth } from "@/lib/firebase/auth-context"
 import { formatDate, getInitials } from "@/lib/format"
+import { toast } from "sonner"
 
 export default function AdminSupportPage() {
   const { data: tickets = [], loading, error, refetch } = useAllSupportTickets()
+  const { firebaseUser } = useAuth()
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [replyMessage, setReplyMessage] = useState("")
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null)
   const selectedTicket = tickets.find((t) => t.id === selectedTicketId)
   useEffect(() => {
     if (tickets.length > 0 && !selectedTicketId) setSelectedTicketId(tickets[0].id)
@@ -34,6 +39,36 @@ export default function AdminSupportPage() {
       case "in-progress": return "bg-primary/10 text-primary"
       case "resolved": return "bg-success/10 text-success"
       default: return "bg-secondary text-secondary-foreground"
+    }
+  }
+
+  const handleSendReply = async () => {
+    if (!selectedTicketId || !replyMessage.trim()) {
+      toast.error("Enter a message to send")
+      return
+    }
+    const token = await firebaseUser?.getIdToken()
+    if (!token) {
+      toast.error("Sign in again to send a reply")
+      return
+    }
+    setSendingReplyId(selectedTicketId)
+    try {
+      const res = await fetch(`/api/support/tickets/${selectedTicketId}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: replyMessage.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? "Failed to send reply")
+        return
+      }
+      toast.success("Reply sent")
+      setReplyMessage("")
+      refetch()
+    } finally {
+      setSendingReplyId(null)
     }
   }
 
@@ -126,8 +161,31 @@ export default function AdminSupportPage() {
               )}
 
               <div className="flex gap-2 border-t border-border pt-4">
-                <Input placeholder="Type a reply..." className="text-sm" />
-                <Button className="gap-2"><Send className="h-4 w-4" /> Send</Button>
+                <Input
+                  placeholder="Type a reply..."
+                  className="text-sm"
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendReply()
+                    }
+                  }}
+                  disabled={!!sendingReplyId}
+                />
+                <Button
+                  className="gap-2"
+                  onClick={handleSendReply}
+                  disabled={!!sendingReplyId || !replyMessage.trim()}
+                >
+                  {sendingReplyId === selectedTicketId ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Send
+                </Button>
               </div>
             </CardContent>
           </Card>

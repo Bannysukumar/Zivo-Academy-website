@@ -8,15 +8,22 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { HelpCircle, Plus, MessageSquare, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { HelpCircle, Plus, MessageSquare, Clock, CheckCircle2, AlertCircle, Loader2, Send } from "lucide-react"
 import { useAuth } from "@/lib/firebase/auth-context"
 import { useSupportTickets } from "@/lib/firebase/hooks"
 import { formatDate, getInitials } from "@/lib/format"
+import { toast } from "sonner"
 
 export default function StudentSupportPage() {
-  const { user } = useAuth()
-  const { data: tickets = [], loading } = useSupportTickets(user?.id)
+  const { user, firebaseUser } = useAuth()
+  const { data: tickets = [], loading, refetch } = useSupportTickets(user?.id)
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [subject, setSubject] = useState("")
+  const [message, setMessage] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [replyByTicketId, setReplyByTicketId] = useState<Record<string, string>>({})
+  const [sendingReplyTicketId, setSendingReplyTicketId] = useState<string | null>(null)
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -36,6 +43,71 @@ export default function StudentSupportPage() {
     }
   }
 
+  const handleSendReply = async (ticketId: string) => {
+    const text = (replyByTicketId[ticketId] ?? "").trim()
+    if (!text) {
+      toast.error("Enter a message to send")
+      return
+    }
+    if (!firebaseUser) {
+      toast.error("Please sign in to reply")
+      return
+    }
+    setSendingReplyTicketId(ticketId)
+    try {
+      const token = await firebaseUser.getIdToken()
+      const res = await fetch(`/api/support/tickets/${ticketId}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: text }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? "Failed to send reply")
+        return
+      }
+      toast.success("Reply sent")
+      setReplyByTicketId((prev) => ({ ...prev, [ticketId]: "" }))
+      refetch()
+    } finally {
+      setSendingReplyTicketId(null)
+    }
+  }
+
+  const handleSubmitTicket = async () => {
+    const sub = subject.trim()
+    const msg = message.trim()
+    if (!sub || !msg) {
+      toast.error("Please enter a subject and message")
+      return
+    }
+    if (!firebaseUser) {
+      toast.error("Please sign in to submit a ticket")
+      return
+    }
+    setSubmitting(true)
+    try {
+      const token = await firebaseUser.getIdToken()
+      const res = await fetch("/api/student/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subject: sub, message: msg }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? "Failed to submit ticket")
+        return
+      }
+      toast.success("Ticket submitted successfully")
+      setSubject("")
+      setMessage("")
+      setDialogOpen(false)
+      refetch()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
@@ -52,16 +124,40 @@ export default function StudentSupportPage() {
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-foreground">Support</h1>
           <p className="mt-1 text-sm text-muted-foreground">Get help with your courses and account</p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> New Ticket</Button>
           </DialogTrigger>
           <DialogContent aria-describedby={undefined}>
             <DialogHeader><DialogTitle>Create Support Ticket</DialogTitle></DialogHeader>
             <div className="flex flex-col gap-4 pt-2">
-              <Input placeholder="Subject" />
-              <Textarea placeholder="Describe your issue..." rows={4} />
-              <Button className="w-full">Submit Ticket</Button>
+              <Input
+                placeholder="Subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                disabled={submitting}
+              />
+              <Textarea
+                placeholder="Describe your issue..."
+                rows={4}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                disabled={submitting}
+              />
+              <Button
+                className="w-full"
+                onClick={handleSubmitTicket}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  "Submit Ticket"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -117,8 +213,37 @@ export default function StudentSupportPage() {
                 )}
 
                 <div className="flex gap-2 border-t border-border pt-3">
-                  <Input placeholder="Type a reply..." className="text-sm" />
-                  <Button size="sm">Reply</Button>
+                  <Input
+                    placeholder="Type a reply..."
+                    className="text-sm"
+                    value={replyByTicketId[ticket.id] ?? ""}
+                    onChange={(e) =>
+                      setReplyByTicketId((prev) => ({ ...prev, [ticket.id]: e.target.value }))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendReply(ticket.id)
+                      }
+                    }}
+                    disabled={sendingReplyTicketId === ticket.id}
+                  />
+                  <Button
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => handleSendReply(ticket.id)}
+                    disabled={
+                      sendingReplyTicketId === ticket.id ||
+                      !(replyByTicketId[ticket.id] ?? "").trim()
+                    }
+                  >
+                    {sendingReplyTicketId === ticket.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    Reply
+                  </Button>
                 </div>
               </CardContent>
             </Card>

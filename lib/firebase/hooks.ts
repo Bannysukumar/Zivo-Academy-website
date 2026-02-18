@@ -133,7 +133,10 @@ export function useSupportTickets(userId: string | undefined) {
     }
     data.getTicketsByUserId(userId).then(setList).catch((e) => setError(String(e))).finally(() => setLoading(false))
   }, [userId])
-  return { data: list, loading, error }
+  const refetch = useCallback(() => {
+    if (userId) data.getTicketsByUserId(userId).then(setList).catch((e) => setError(String(e)))
+  }, [userId])
+  return { data: list, loading, error, refetch }
 }
 
 export function useReferralData(userId: string | undefined) {

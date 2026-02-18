@@ -166,13 +166,21 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
 }
 
 export async function getTicketsByUserId(userId: string): Promise<SupportTicket[]> {
-  const q = query(
-    collection(db(), COLLECTIONS.supportTickets),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  )
-  const snap = await getDocs(q)
-  return mapSnapshots<SupportTicket>(snap.docs.map((d) => ({ id: d.id, data: d.data() ?? {} })))
+  const coll = collection(db(), COLLECTIONS.supportTickets)
+  try {
+    const q = query(
+      coll,
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    )
+    const snap = await getDocs(q)
+    return mapSnapshots<SupportTicket>(snap.docs.map((d) => ({ id: d.id, data: d.data() ?? {} })))
+  } catch {
+    const q = query(coll, where("userId", "==", userId))
+    const snap = await getDocs(q)
+    const list = mapSnapshots<SupportTicket>(snap.docs.map((d) => ({ id: d.id, data: d.data() ?? {} })))
+    return list.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+  }
 }
 
 export async function getReferralEarningsByReferrerId(referrerId: string): Promise<ReferralEarning[]> {

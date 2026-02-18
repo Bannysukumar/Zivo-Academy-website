@@ -18,7 +18,6 @@ import {
 import { useCourseById, useSections, useEnrollments } from "@/lib/firebase/hooks"
 import { useAuth } from "@/lib/firebase/auth-context"
 import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
 
 export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params)
