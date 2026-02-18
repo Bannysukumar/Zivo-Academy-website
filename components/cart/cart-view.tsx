@@ -8,25 +8,52 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { BookOpen, Trash2, Tag, ShoppingCart, ArrowRight } from "lucide-react"
+import { BookOpen, Trash2, Tag, ShoppingCart, ArrowRight, Loader2 } from "lucide-react"
 import { formatPrice } from "@/lib/format"
 import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/firebase/auth-context"
+import { toast } from "sonner"
+
+type AppliedCoupon = { code: string; type: "percent" | "flat"; value: number }
 
 export function CartView() {
   const router = useRouter()
   const { user } = useAuth()
-  const { items: cartItems, removeItem, clearCart } = useCart()
+  const { items: cartItems, removeItem } = useCart()
   const [coupon, setCoupon] = useState("")
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+  const [applying, setApplying] = useState(false)
 
   const subtotal = cartItems.reduce((sum, c) => sum + c.price, 0)
-  const discount = appliedCoupon === "WELCOME20" ? Math.round(subtotal * 0.2) : 0
+  const discount = appliedCoupon
+    ? appliedCoupon.type === "percent"
+      ? Math.round((subtotal * appliedCoupon.value) / 100)
+      : Math.min(appliedCoupon.value, subtotal)
+    : 0
   const total = subtotal - discount
 
-  const applyCoupon = () => {
-    if (coupon.toUpperCase() === "WELCOME20") {
-      setAppliedCoupon("WELCOME20")
+  const applyCoupon = async () => {
+    const code = coupon.trim()
+    if (!code) {
+      toast.error("Enter a coupon code")
+      return
+    }
+    setApplying(true)
+    try {
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}`)
+      const data = await res.json().catch(() => ({})) as { valid?: boolean; error?: string; code?: string; type?: "percent" | "flat"; value?: number }
+      if (!data.valid) {
+        toast.error(data.error ?? "Invalid coupon code")
+        return
+      }
+      setAppliedCoupon({
+        code: data.code ?? code.toUpperCase(),
+        type: data.type === "flat" ? "flat" : "percent",
+        value: Math.max(0, Number(data.value) ?? 0),
+      })
+      toast.success(`Coupon ${data.code ?? code} applied!`)
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -117,9 +144,9 @@ export function CartView() {
                   <span className="font-medium text-foreground">{formatPrice(subtotal)}</span>
                 </div>
 
-                {discount > 0 && (
+                {discount > 0 && appliedCoupon && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-success">Discount ({appliedCoupon})</span>
+                    <span className="text-success">Discount ({appliedCoupon.code})</span>
                     <span className="font-medium text-success">-{formatPrice(discount)}</span>
                   </div>
                 )}
@@ -138,15 +165,27 @@ export function CartView() {
                     <Input
                       placeholder="Coupon code"
                       className="pl-10"
-                      value={coupon}
+                      value={appliedCoupon ? "" : coupon}
                       onChange={e => setCoupon(e.target.value)}
+                      disabled={!!appliedCoupon}
                     />
                   </div>
-                  <Button variant="outline" onClick={applyCoupon}>Apply</Button>
+                  {appliedCoupon ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => { setAppliedCoupon(null); setCoupon(""); toast.success("Coupon removed") }}
+                    >
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={applyCoupon} disabled={applying}>
+                      {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  )}
                 </div>
 
                 {appliedCoupon && (
-                  <p className="text-xs text-success">Coupon {appliedCoupon} applied successfully!</p>
+                  <p className="text-xs text-success">Coupon {appliedCoupon.code} applied successfully!</p>
                 )}
 
                 <Button size="lg" className="w-full gap-2" onClick={handleCheckout}>
