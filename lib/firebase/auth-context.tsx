@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: new Date().toISOString().slice(0, 10),
           blocked: false,
         }
-        if (referralCode?.trim()) profileForDb.referredBy = referralCode.trim()
+        if (referralCode?.trim()) profileForDb.referredBy = referralCode.trim().toUpperCase()
         await setDoc(userRef, withoutUndefined(profileForDb))
         await syncUser(cred.user)
         setState((s) => ({ ...s, loading: false, error: null }))

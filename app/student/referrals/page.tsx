@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Copy, Share2, Wallet, TrendingUp, Users, IndianRupee } from "lucide-react"
+import { Copy, Share2, Wallet, TrendingUp, Users, IndianRupee, UserPlus } from "lucide-react"
 import { useAuth } from "@/lib/firebase/auth-context"
-import { useReferralData } from "@/lib/firebase/hooks"
+import { useReferralData, useReferredUsers } from "@/lib/firebase/hooks"
 import { formatPrice, formatDate } from "@/lib/format"
 import { toast } from "sonner"
 
 export default function StudentReferralsPage() {
   const { user } = useAuth()
   const { earnings, wallet, withdrawals, loading } = useReferralData(user?.id)
+  const { referredUsers } = useReferredUsers(user?.referralCode)
   const referralCode = user?.referralCode ?? ""
   const [referralLink, setReferralLink] = useState("")
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function StudentReferralsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Referrals</p>
-              <p className="text-lg font-bold text-foreground">{earnings.length}</p>
+              <p className="text-lg font-bold text-foreground">{referredUsers.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -126,9 +127,46 @@ export default function StudentReferralsPage() {
         </Button>
       </div>
 
+      {referredUsers.length > 0 && (
+        <Card className="border border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserPlus className="h-4 w-4" />
+              Referred Friends ({referredUsers.length})
+            </CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              People who signed up using your referral link
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Joined</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {referredUsers.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(u.createdAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border border-border">
         <CardHeader>
           <CardTitle className="text-base">Referral Earnings</CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Earnings when referred friends purchase a course
+          </p>
         </CardHeader>
         <CardContent>
           {earnings.length === 0 ? (

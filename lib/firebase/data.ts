@@ -183,6 +183,19 @@ export async function getTicketsByUserId(userId: string): Promise<SupportTicket[
   }
 }
 
+/** Users who signed up using this referral code (referredBy === referralCode). */
+export async function getReferredUsersByReferralCode(referralCode: string): Promise<User[]> {
+  if (!referralCode.trim()) return []
+  const code = referralCode.trim().toUpperCase()
+  const q = query(
+    collection(db(), COLLECTIONS.users),
+    where("referredBy", "==", code)
+  )
+  const snap = await getDocs(q)
+  const list = mapSnapshots<User>(snap.docs.map((d) => ({ id: d.id, data: d.data() ?? {} })))
+  return list.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+}
+
 export async function getReferralEarningsByReferrerId(referrerId: string): Promise<ReferralEarning[]> {
   const q = query(
     collection(db(), COLLECTIONS.referralEarnings),

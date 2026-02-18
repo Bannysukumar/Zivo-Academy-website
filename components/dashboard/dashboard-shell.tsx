@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { getInitials } from "@/lib/format"
 import {
   GraduationCap, Menu, LayoutDashboard, BookOpen, Video, FileText,
-  ClipboardList, Calendar, Award, Share2, HelpCircle, Settings, LogOut,
+  ClipboardList, Calendar, Award, Share2, HelpCircle, Settings as SettingsIcon, LogOut,
   ChevronLeft, Users, BarChart3, Tag, Bell, ShieldCheck, Megaphone,
   CreditCard, ScrollText, Package
 } from "lucide-react"
@@ -58,6 +58,7 @@ const adminNav: NavItem[] = [
   { href: "/admin/support", label: "Support", icon: <HelpCircle className="h-4 w-4" /> },
   { href: "/admin/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: <ScrollText className="h-4 w-4" /> },
+  { href: "/admin/settings", label: "Settings", icon: <SettingsIcon className="h-4 w-4" /> },
 ]
 
 export function DashboardShell({ children, role, userName, userEmail }: DashboardShellProps) {

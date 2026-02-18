@@ -86,5 +86,9 @@ service cloud.firestore {
     match /notifications/{id} {
       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
     }
+    // App settings (Razorpay, referral): server-only via Admin SDK; no client access
+    match /settings/{id} {
+      allow read, write: if false;
+    }
   }
 }

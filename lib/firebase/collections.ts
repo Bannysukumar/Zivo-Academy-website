@@ -21,4 +21,5 @@ export const COLLECTIONS = {
   testimonials: "testimonials",
   announcements: "announcements",
   notifications: "notifications",
+  settings: "settings",
 } as const

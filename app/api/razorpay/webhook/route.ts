@@ -6,11 +6,18 @@ import { COLLECTIONS } from "@/lib/firebase/collections"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET
+async function getWebhookSecret(): Promise<string | null> {
+  const db = getAdminFirestore()
+  const snap = await db.collection(COLLECTIONS.settings).doc("razorpay").get()
+  if (snap.exists) {
+    const secret = (snap.data()?.webhookSecret as string)?.trim()
+    if (secret) return secret
+  }
+  return process.env.RAZORPAY_WEBHOOK_SECRET ?? null
+}
 
-function verifySignature(body: string, signature: string): boolean {
-  if (!WEBHOOK_SECRET) return false
-  const expected = createHmac("sha256", WEBHOOK_SECRET).update(body).digest("hex")
+function verifySignature(body: string, signature: string, secret: string): boolean {
+  const expected = createHmac("sha256", secret).update(body).digest("hex")
   return signature === expected
 }
 
@@ -18,7 +25,8 @@ export async function POST(req: Request) {
   try {
     const signature = req.headers.get("x-razorpay-signature") ?? ""
     const rawBody = await req.text()
-    if (!verifySignature(rawBody, signature)) {
+    const webhookSecret = await getWebhookSecret()
+    if (!webhookSecret || !verifySignature(rawBody, signature, webhookSecret)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 

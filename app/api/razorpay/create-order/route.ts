@@ -5,8 +5,20 @@ import { COLLECTIONS } from "@/lib/firebase/collections"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
+async function getRazorpayCredentials(): Promise<{ keyId: string; keySecret: string } | null> {
+  const db = getAdminFirestore()
+  const snap = await db.collection(COLLECTIONS.settings).doc("razorpay").get()
+  if (snap.exists) {
+    const d = snap.data()
+    const keyId = (d?.keyId as string)?.trim()
+    const keySecret = (d?.keySecret as string)?.trim()
+    if (keyId && keySecret) return { keyId, keySecret }
+  }
+  const keyId = process.env.RAZORPAY_KEY_ID
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (keyId && keySecret) return { keyId, keySecret }
+  return null
+}
 
 export async function POST(req: Request) {
   try {
@@ -18,12 +30,14 @@ export async function POST(req: Request) {
     const decoded = await getAdminAuth().verifyIdToken(idToken)
     const userId = decoded.uid
 
-    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    const creds = await getRazorpayCredentials()
+    if (!creds) {
       return NextResponse.json(
-        { error: "Razorpay not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." },
+        { error: "Razorpay not configured. Set keys in Admin → Settings or RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in environment." },
         { status: 503 }
       )
     }
+    const { keyId: RAZORPAY_KEY_ID, keySecret: RAZORPAY_KEY_SECRET } = creds
 
     const body = await req.json()
     const { courseIds } = body as { courseIds?: string[] }

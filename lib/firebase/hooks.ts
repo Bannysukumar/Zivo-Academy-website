@@ -170,6 +170,22 @@ export function useReferralData(userId: string | undefined) {
   return { earnings, wallet, withdrawals, loading, error }
 }
 
+export function useReferredUsers(referralCode: string | undefined) {
+  const [referredUsers, setReferredUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(!!referralCode)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!referralCode) {
+      setReferredUsers([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    data.getReferredUsersByReferralCode(referralCode).then(setReferredUsers).catch((e) => setError(String(e))).finally(() => setLoading(false))
+  }, [referralCode])
+  return { referredUsers, loading, error }
+}
+
 export function useNotifications(userId: string | undefined) {
   const [list, setList] = useState<Notification[]>([])
   const [loading, setLoading] = useState(!!userId)
